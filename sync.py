@@ -606,6 +606,53 @@ class DatabaseConnector:
                     pass
 
 
+    def fetch_salesreturn_report(self) -> Optional[List[Dict[str, Any]]]:
+        """Fetch sales return records from acc_invoicereturn for TODAY only (Asia/Kolkata timezone)"""
+        cursor = None
+        try:
+            # Get today's date in Asia/Kolkata timezone
+            try:
+                from zoneinfo import ZoneInfo
+                tz = ZoneInfo('Asia/Kolkata')
+                today = datetime.now(tz).date()
+            except Exception:
+                try:
+                    from pytz import timezone
+                    tz = timezone('Asia/Kolkata')
+                    today = datetime.now(tz).date()
+                except Exception:
+                    today = datetime.utcnow().date()
+
+            cursor = self._cursor()
+            query = """
+                SELECT 
+                    "date",
+                    invno,
+                    net,
+                    customername,
+                    userid
+                FROM acc_invoicereturn
+                WHERE "date" = ?
+                ORDER BY "date" DESC, invno DESC
+            """
+            logging.info(f"Executing salesreturn_report query for date={today.isoformat()}...")
+            cursor.execute(query, (today,))
+            columns = [column[0] for column in cursor.description]
+            result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            logging.info(f"✅ Fetched {len(result)} salesreturn_report records for {today.isoformat()}")
+            return result
+        except Exception as e:
+            logging.error(f"❌ Failed fetching salesreturn_report: {e}")
+            logging.error(f"{traceback.format_exc()}")
+            return None
+        finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+
+
 class WebAPIClient:
     # API Endpoints defined as class constants
     ENDPOINT_USERS = "/upload-users/"
@@ -619,6 +666,8 @@ class WebAPIClient:
     ENDPOINT_PURCHASE_TODAY = "/upload-purchase-today/"
     ENDPOINT_SALES_DAYWISE = "/upload-sales-daywise/"
     ENDPOINT_SALES_MONTHWISE = "/upload-sales-monthwise/"
+    ENDPOINT_SALESRETURN_REPORT = "/upload-salesreturn-report/"
+
 
     def __init__(self, config: DatabaseConfig):
         self.config = config
@@ -924,6 +973,22 @@ class WebAPIClient:
                 return False
         except Exception as e:
             logging.error(f"❌ Exception in upload_sales_monthwise: {e}")
+            return False
+        
+
+    def upload_salesreturn_report(self, salesreturn_report: List[Dict[str, Any]]) -> bool:
+        """Upload salesreturn_report records"""
+        url = f"{self.config.api_base_url}{self.ENDPOINT_SALESRETURN_REPORT}?client_id={self.config.client_id}"
+        try:
+            res = self.session.post(url, json=salesreturn_report, timeout=self.config.api_timeout)
+            if res.status_code in [200, 201]:
+                logging.info("✅ SalesReturn_Report uploaded successfully")
+                return True
+            else:
+                logging.error(f"❌ Upload failed: {res.status_code} - {res.text}")
+                return False
+        except Exception as e:
+            logging.error(f"❌ Exception in upload_salesreturn_report: {e}")
             return False
 
 
@@ -1347,6 +1412,46 @@ class SyncTool:
                 'total_amount': total_amount
             })
         return valid
+    
+
+
+
+    def validate_salesreturn_report_data(self, salesreturn_report: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Validate salesreturn_report data"""
+        valid = []
+        for i, s in enumerate(salesreturn_report):
+            date = None
+            if s.get('date'):
+                try:
+                    if hasattr(s['date'], 'strftime'):
+                        date = s['date'].strftime('%Y-%m-%d')
+                    else:
+                        date = str(s['date'])
+                except Exception:
+                    date = None
+            
+            net = None
+            try:
+                if s.get('net') is not None:
+                    net = float(s['net'])
+            except (ValueError, TypeError):
+                net = None
+            
+            invno = None
+            try:
+                if s.get('invno') is not None:
+                    invno = int(s['invno'])
+            except (ValueError, TypeError):
+                invno = None
+            
+            valid.append({
+                'date': date,
+                'invno': invno,
+                'net': net,
+                'customername': s.get('customername', ''),
+                'userid': s.get('userid', '')
+            })
+        return valid
 
     def run(self) -> bool:
         print("🔄 Starting SQL Anywhere to Web API sync...")
@@ -1521,6 +1626,20 @@ class SyncTool:
                 print("📊 Found 0 sales_monthwise entries")
         else:
             print("❌ Failed to fetch sales_monthwise data")
+
+        salesreturn_report = self.db_connector.fetch_salesreturn_report()
+        if salesreturn_report is not None:
+            if salesreturn_report:
+                print(f"📊 Found {len(salesreturn_report)} salesreturn_report entries")
+                valid_salesreturn_report = self.validate_salesreturn_report_data(salesreturn_report)
+                if valid_salesreturn_report:
+                    self.api_client.upload_salesreturn_report(valid_salesreturn_report)
+                else:
+                    print("❌ No valid salesreturn_report data")
+            else:
+                print("📊 Found 0 salesreturn_report entries")
+        else:
+            print("❌ Failed to fetch salesreturn_report data")
 
         # Ensure DB connection closed
         try:
