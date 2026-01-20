@@ -62,30 +62,47 @@ def create_build_directory():
     print("📁 Build directory created")
 
 def build_executable():
-    """Build the executable using PyInstaller"""
-    print("🔨 Building executable...")
-    
-    # PyInstaller command
-    cmd = [
-        "pyinstaller",
-        "--onefile",                    # Create single executable
-        "--console",                    # Keep console window
-        "--name", "SyncTool",          # Executable name
-        "--clean",                      # Clean cache
-        "--noconfirm",                 # Don't ask for confirmation
-        "--distpath", "dist",          # Output directory
-        "--workpath", "build",         # Work directory
-        "--specpath", ".",             # Spec file location
-        "sync.py"                      # Main script
+    """Build executables using PyInstaller"""
+    print("🔨 Building executables...")
+
+    commands = [
+        [
+            "pyinstaller",
+            "--onefile",
+            "--console",
+            "--name", "SyncTool",
+            "--clean",
+            "--noconfirm",
+            "--distpath", "dist",
+            "--workpath", "build",
+            "--specpath", ".",
+            "sync.py"
+        ],
+        [
+            "pyinstaller",
+            "--onefile",
+            "--console",
+            "--name", "TypeWiseSalesTodaySync",
+            "--clean",
+            "--noconfirm",
+            "--distpath", "dist",
+            "--workpath", "build",
+            "--specpath", ".",
+            "sync_type_wise_salestoday.py"
+        ]
     ]
-    
+
     try:
-        subprocess.check_call(cmd)
-        print("✅ Executable built successfully")
+        for cmd in commands:
+            subprocess.check_call(cmd)
+
+        print("✅ All executables built successfully")
         return True
+
     except subprocess.CalledProcessError as e:
         print(f"❌ Build failed: {e}")
         return False
+
 
 def create_deployment_package():
     """Create deployment package with executable and config"""

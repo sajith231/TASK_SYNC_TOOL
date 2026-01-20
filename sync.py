@@ -18,6 +18,8 @@ import pyodbc
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import sync_type_wise_salestoday
+import sync_acc_sales_types
 
 
 class DatabaseConfig:
@@ -1634,18 +1636,27 @@ class SyncTool:
                 valid_salesreturn_report = self.validate_salesreturn_report_data(salesreturn_report)
                 if valid_salesreturn_report:
                     self.api_client.upload_salesreturn_report(valid_salesreturn_report)
-                else:
-                    print("❌ No valid salesreturn_report data")
-            else:
-                print("📊 Found 0 salesreturn_report entries")
-        else:
-            print("❌ Failed to fetch salesreturn_report data")
+        # ===============================
+        # 🔥 NEW: Sync Type Wise Sales Today
+        # ===============================
+        try:
+            logging.info("🔄 Syncing Type Wise Sales Today...")
+            sync_type_wise_salestoday.run_type_wise_sales_today(self.config)
+            logging.info("✅ Type Wise Sales Today Sync completed")
+            logging.info("🔄 Syncing ACC SALES TYPES...")
+            sync_acc_sales_types.run_acc_sales_types_sync(self.config)
+        except Exception as e:
+            logging.error("❌ Type Wise Sales Today Sync failed")
+            logging.error(traceback.format_exc())
 
-        # Ensure DB connection closed
+        # ===============================
+        # Close DB
+        # ===============================
         try:
             self.db_connector.close()
         except Exception:
             pass
+
         return True
 
     def run_interactive(self):
