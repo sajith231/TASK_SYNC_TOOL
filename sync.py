@@ -20,6 +20,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import sync_type_wise_salestoday
 import sync_acc_sales_types
+import sync_stock_report
 
 
 class DatabaseConfig:
@@ -1639,18 +1640,44 @@ class SyncTool:
         # ===============================
         # 🔥 NEW: Sync Type Wise Sales Today
         # ===============================
+        # ===============================
+        # 🔥 TYPE WISE SALES TODAY
+        # ===============================
         try:
             logging.info("🔄 Syncing Type Wise Sales Today...")
             sync_type_wise_salestoday.run_type_wise_sales_today(self.config)
             logging.info("✅ Type Wise Sales Today Sync completed")
-            logging.info("🔄 Syncing ACC SALES TYPES...")
-            sync_acc_sales_types.run_acc_sales_types_sync(self.config)
-        except Exception as e:
+        except Exception:
             logging.error("❌ Type Wise Sales Today Sync failed")
             logging.error(traceback.format_exc())
 
+
         # ===============================
-        # Close DB
+        # 🔥 ACC SALES TYPES
+        # ===============================
+        try:
+            logging.info("🔄 Syncing ACC SALES TYPES...")
+            sync_acc_sales_types.run_acc_sales_types_sync(self.config)
+            logging.info("✅ ACC SALES TYPES Sync completed")
+        except Exception:
+            logging.error("❌ ACC SALES TYPES Sync failed")
+            logging.error(traceback.format_exc())
+
+
+        # ===============================
+        # 🔥 STOCK REPORT
+        # ===============================
+        try:
+            logging.info("🔄 Syncing STOCK REPORT...")
+            sync_stock_report.run_stock_report_sync(self.config)
+            logging.info("✅ STOCK REPORT Sync completed")
+        except Exception:
+            logging.error("❌ STOCK REPORT Sync failed")
+            logging.error(traceback.format_exc())
+
+
+        # ===============================
+        # 🔒 Close DB
         # ===============================
         try:
             self.db_connector.close()
@@ -1658,6 +1685,8 @@ class SyncTool:
             pass
 
         return True
+
+
 
     def run_interactive(self):
         print("=" * 60)
