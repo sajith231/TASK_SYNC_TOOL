@@ -24,7 +24,7 @@ import sync_stock_report
 import sync_tendercash
 from sync_refresh_tag import run_refresh_tag_sync
 from sync_pdc import run_pdc_sync
-
+from sync_eventlog import run_eventlog_sync
 
 
 
@@ -1705,6 +1705,14 @@ class SyncTool:
             logging.info("✅ PDC Sync completed")
         except Exception:
             logging.error("❌ PDC Sync failed")
+            logging.error(traceback.format_exc())
+
+        try:
+            logging.info("🔄 Syncing EVENTLOG...")
+            run_eventlog_sync(self.config)
+            logging.info("✅ EVENTLOG Sync completed")
+        except Exception:
+            logging.error("❌ EVENTLOG Sync failed")
             logging.error(traceback.format_exc())
 
 
