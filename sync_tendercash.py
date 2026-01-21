@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
-STOCK REPORT SYNC
-acc_product + acc_productbatch → stock_report
-
-RULE:
-- If total rows > 20000 → DO NOT SYNC
-- 20000 is allowed
+TENDER CASH SYNC
+DBA.acc_tendercash + DBA.acc_currency → tendercash
 """
 
 import logging
@@ -14,12 +10,6 @@ from decimal import Decimal
 
 import pyodbc
 import requests
-
-
-# ===============================
-# CONSTANTS
-# ===============================
-MAX_STOCK_ROWS = 20000
 
 
 # ===============================
@@ -36,39 +26,24 @@ class Database:
             f"UID={self.config.username};"
             f"PWD={self.config.password};"
         )
-        logging.info("✅ DB connected (STOCK REPORT)")
+        logging.info("✅ DB connected (TENDERCASH)")
 
     def close(self):
         if self.conn:
             self.conn.close()
-            logging.info("🔒 DB connection closed (STOCK REPORT)")
+            logging.info("🔒 DB connection closed (TENDERCASH)")
 
-    def get_stock_report_count(self):
-        query = """
-            SELECT COUNT(*)
-            FROM DBA.acc_product p
-            JOIN DBA.acc_productbatch b
-                ON p.code = b.productcode
-        """
-        cur = self.conn.cursor()
-        cur.execute(query)
-        count = cur.fetchone()[0]
-        logging.info(f"📊 Stock report row count: {count}")
-        return count
-
-    def fetch_stock_report(self):
+    def fetch_tendercash(self):
         query = """
             SELECT
-                p.code       AS product_code,
-                p.name       AS product_name,
-                b.productcode,
-                b.barcode,
-                b.bmrp,
-                b.salesprice,
-                b.quantity
-            FROM DBA.acc_product p
-            JOIN DBA.acc_productbatch b
-                ON p.code = b.productcode
+                t.mslno,
+                t.code            AS tender_code,
+                t.amount,
+                c.code            AS currency_code,
+                c.name            AS currency_name
+            FROM DBA.acc_tendercash t
+            LEFT JOIN DBA.acc_currency c
+                ON t.code = c.code
         """
 
         cur = self.conn.cursor()
@@ -80,14 +55,14 @@ class Database:
         for r in cur.fetchall():
             row = dict(zip(cols, r))
 
-            # Convert Decimal → float
+            # 🔥 Decimal → float
             for k, v in row.items():
                 if isinstance(v, Decimal):
                     row[k] = float(v)
 
             rows.append(row)
 
-        logging.info(f"📦 Fetched {len(rows)} stock report rows")
+        logging.info(f"📦 Fetched {len(rows)} tendercash rows")
         return rows
 
 
@@ -95,7 +70,7 @@ class Database:
 # API CLIENT
 # ===============================
 class APIClient:
-    ENDPOINT = "/upload-stock-report/"
+    ENDPOINT = "/upload-tendercash/"
 
     def __init__(self, config):
         self.config = config
@@ -117,44 +92,30 @@ class APIClient:
         if res.status_code not in (200, 201):
             raise Exception(res.text)
 
-        logging.info(f"✅ Uploaded {len(data)} stock report rows")
+        logging.info(f"✅ Uploaded {len(data)} tendercash rows")
 
 
 # ===============================
 # ENTRY POINT (CALLED FROM sync.py)
 # ===============================
-def run_stock_report_sync(config):
+def run_tendercash_sync(config):
     db = Database(config)
     api = APIClient(config)
 
     try:
-        logging.info("🔄 Syncing STOCK REPORT...")
+        logging.info("🔄 Syncing TENDERCASH...")
         db.connect()
 
-        total_rows = db.get_stock_report_count()
+        data = db.fetch_tendercash()
 
-        # 🔥 HARD LIMIT CHECK
-        if total_rows > MAX_STOCK_ROWS:
-            logging.warning(
-                f"⚠️ STOCK REPORT sync skipped! "
-                f"Row count {total_rows} exceeds limit {MAX_STOCK_ROWS}"
-            )
+        if not data:
+            logging.info("ℹ️ No tendercash data found")
             return
 
-        if total_rows == 0:
-            logging.info("ℹ️ No stock report data found")
-            return
-
-        logging.info(
-            f"📦 Stock report row count {total_rows} within limit "
-            f"({MAX_STOCK_ROWS}). Proceeding with sync..."
-        )
-
-        data = db.fetch_stock_report()
         api.upload(data)
 
     except Exception:
-        logging.error("❌ STOCK REPORT sync failed")
+        logging.error("❌ TENDERCASH sync failed")
         logging.error(traceback.format_exc())
         raise
     finally:
@@ -169,4 +130,4 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
     cfg = DatabaseConfig()
-    run_stock_report_sync(cfg)
+    run_tendercash_sync(cfg)

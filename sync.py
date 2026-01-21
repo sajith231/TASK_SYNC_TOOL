@@ -21,6 +21,11 @@ from urllib3.util.retry import Retry
 import sync_type_wise_salestoday
 import sync_acc_sales_types
 import sync_stock_report
+import sync_tendercash
+from sync_refresh_tag import run_refresh_tag_sync
+from sync_pdc import run_pdc_sync
+
+
 
 
 class DatabaseConfig:
@@ -1674,6 +1679,35 @@ class SyncTool:
         except Exception:
             logging.error("❌ STOCK REPORT Sync failed")
             logging.error(traceback.format_exc())
+
+        try:
+            logging.info("🔄 Syncing TENDERCASH...")
+            sync_tendercash.run_tendercash_sync(self.config)
+            logging.info("✅ TENDERCASH Sync completed")
+        except Exception:
+            logging.error("❌ TENDERCASH Sync failed")
+            logging.error(traceback.format_exc())
+
+        # ===============================
+        # 🔥 REFRESH TAG
+        # ===============================
+        try:
+            logging.info("🔄 Syncing REFRESH TAG...")
+            run_refresh_tag_sync(self.config)
+            logging.info("✅ REFRESH TAG Sync completed")
+        except Exception:
+            logging.error("❌ REFRESH TAG Sync failed")
+            logging.error(traceback.format_exc())
+
+        try:
+            logging.info("🔄 Syncing PDC...")
+            run_pdc_sync(self.config)
+            logging.info("✅ PDC Sync completed")
+        except Exception:
+            logging.error("❌ PDC Sync failed")
+            logging.error(traceback.format_exc())
+
+
 
 
         # ===============================
