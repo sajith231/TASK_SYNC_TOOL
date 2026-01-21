@@ -13,6 +13,9 @@ import pyodbc
 import requests
 
 
+# ===============================
+# DATABASE
+# ===============================
 class Database:
     def __init__(self, config):
         self.config = config
@@ -69,6 +72,9 @@ class Database:
         return rows
 
 
+# ===============================
+# API CLIENT
+# ===============================
 class APIClient:
     ENDPOINT = "/upload-eventlog/"
 
@@ -92,7 +98,10 @@ class APIClient:
         logging.info(f"✅ Uploaded {len(data)} EVENTLOG rows")
 
 
-def run_eventlog_sync(config):
+# ===============================
+# ENTRY POINT (CALLED FROM sync.py)
+# ===============================
+def run_eventlog_sync(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -101,6 +110,11 @@ def run_eventlog_sync(config):
         db.connect()
 
         data = db.fetch_eventlog()
+
+        # 🔥 GUI CALLBACK
+        if gui_callback:
+            gui_callback("eventlog", len(data))
+
         if not data:
             logging.info("ℹ️ No EVENTLOG data")
             return
@@ -115,8 +129,13 @@ def run_eventlog_sync(config):
         db.close()
 
 
+# ===============================
+# STANDALONE RUN (OPTIONAL)
+# ===============================
 if __name__ == "__main__":
     from sync import DatabaseConfig
     logging.basicConfig(level=logging.INFO)
     cfg = DatabaseConfig()
+
+    # standalone run → no GUI
     run_eventlog_sync(cfg)

@@ -80,7 +80,7 @@ class Database:
         for r in cur.fetchall():
             row = dict(zip(cols, r))
 
-            # Convert Decimal → float
+            # Decimal → float
             for k, v in row.items():
                 if isinstance(v, Decimal):
                     row[k] = float(v)
@@ -121,9 +121,9 @@ class APIClient:
 
 
 # ===============================
-# ENTRY POINT (CALLED FROM sync.py)
+# ENTRY POINT (GUI ENABLED)
 # ===============================
-def run_stock_report_sync(config):
+def run_stock_report_sync(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -133,7 +133,11 @@ def run_stock_report_sync(config):
 
         total_rows = db.get_stock_report_count()
 
-        # 🔥 HARD LIMIT CHECK
+        # 🔥 SEND COUNT TO GUI
+        if gui_callback:
+            gui_callback("stock_report", total_rows)
+
+        # HARD LIMIT CHECK
         if total_rows > MAX_STOCK_ROWS:
             logging.warning(
                 f"⚠️ STOCK REPORT sync skipped! "

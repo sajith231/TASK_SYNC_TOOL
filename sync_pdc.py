@@ -58,11 +58,8 @@ class Database:
             row = dict(zip(cols, r))
 
             for k, v in row.items():
-                # Decimal → float
                 if isinstance(v, Decimal):
                     row[k] = float(v)
-
-                # 🔥 DATE / DATETIME → STRING (JSON SAFE)
                 elif isinstance(v, (date, datetime)):
                     row[k] = v.isoformat()
 
@@ -103,9 +100,9 @@ class APIClient:
 
 
 # ===============================
-# ENTRY POINT
+# ENTRY POINT (GUI ENABLED)
 # ===============================
-def run_pdc_sync(config):
+def run_pdc_sync(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -114,6 +111,11 @@ def run_pdc_sync(config):
         db.connect()
 
         data = db.fetch_pdc()
+
+        # 🔥 GUI CALLBACK
+        if gui_callback:
+            gui_callback("pdc", len(data))
+
         if not data:
             logging.info("ℹ️ No PDC data found")
             return
@@ -126,3 +128,13 @@ def run_pdc_sync(config):
         raise
     finally:
         db.close()
+
+
+# ===============================
+# STANDALONE RUN
+# ===============================
+if __name__ == "__main__":
+    from sync import DatabaseConfig
+    logging.basicConfig(level=logging.INFO)
+    cfg = DatabaseConfig()
+    run_pdc_sync(cfg)

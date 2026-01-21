@@ -78,7 +78,7 @@ class APIClient:
 # ===============================
 # ENTRY POINT
 # ===============================
-def run_acc_sales_types_sync(config):
+def run_acc_sales_types_sync(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -87,6 +87,11 @@ def run_acc_sales_types_sync(config):
         db.connect()
 
         data = db.fetch_sales_types()
+
+        # 🔥 SEND TO GUI
+        if gui_callback:
+            gui_callback("acc_sales_types", len(data))
+
         if not data:
             logging.info("ℹ️ No ACC sales types found")
             return

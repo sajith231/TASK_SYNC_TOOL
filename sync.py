@@ -26,7 +26,9 @@ from sync_refresh_tag import run_refresh_tag_sync
 from sync_pdc import run_pdc_sync
 from sync_eventlog import run_eventlog_sync
 
-
+class SyncTool:
+    def __init__(self, gui_callback=None):
+        self.gui_callback = gui_callback
 
 class DatabaseConfig:
     def __init__(self, config_file: str = "config.json"):
@@ -1001,7 +1003,8 @@ class WebAPIClient:
 
 
 class SyncTool:
-    def __init__(self):
+    def __init__(self, gui_callback=None):
+        self.gui_callback = gui_callback
         self.config: Optional[DatabaseConfig] = None
         self.db_connector: Optional[DatabaseConnector] = None
         self.api_client: Optional[WebAPIClient] = None
@@ -1469,179 +1472,136 @@ class SyncTool:
             return False
 
         # Sync Users
+        # Sync Users
         users = self.db_connector.fetch_users()
         if users:
-            print(f"📊 Found {len(users)} users")
+            count = len(users)
+            if self.gui_callback:
+                self.gui_callback("acc_users", count)
+
             valid_users = self.validate_user_data(users)
             if valid_users:
                 self.api_client.upload_users(valid_users)
-            else:
-                print("❌ No valid user data")
 
         # Sync Misel
         misel = self.db_connector.fetch_misel()
         if misel:
-            print(f"📊 Found {len(misel)} misel entries")
+            count = len(misel)
+            if self.gui_callback:
+                self.gui_callback("misel", count)
+
             valid_misel = self.validate_misel_data(misel)
             if valid_misel:
                 self.api_client.upload_misel(valid_misel)
-            else:
-                print("❌ No valid misel data")
 
         # Sync AccMaster
         acc_master = self.db_connector.fetch_acc_master()
         if acc_master:
-            print(f"📊 Found {len(acc_master)} acc_master entries")
+            count = len(acc_master)
+            if self.gui_callback:
+                self.gui_callback("acc_master", count)
+
             valid_acc_master = self.validate_acc_master_data(acc_master)
             if valid_acc_master:
-                super_code_counts = {}
-                for r in valid_acc_master:
-                    sc = r.get('super_code', 'None')
-                    super_code_counts[sc] = super_code_counts.get(sc, 0) + 1
-                
-                print(f"📈 Records by super_code: {super_code_counts}")
-                
-                area_records = [r for r in valid_acc_master if r.get('area')]
-                print(f"📊 Records with area data: {len(area_records)}/{len(valid_acc_master)}")
-                
-                if area_records:
-                    sample_areas = [r['area'] for r in area_records[:5]]
-                    print(f"📍 Sample area values: {sample_areas}")
-                
-                if not self.api_client.upload_acc_master(valid_acc_master):
-                    print("❌ CRITICAL: acc_master upload failed! Stopping sync.")
-                    try:
-                        self.db_connector.close()
-                    except Exception:
-                        pass
-                    return False
-            else:
-                print("❌ No valid acc_master data")
+                self.api_client.upload_acc_master(valid_acc_master)
 
         # Sync AccLedgers
         acc_ledgers = self.db_connector.fetch_acc_ledgers()
         if acc_ledgers is not None:
             if acc_ledgers:
-                print(f"📊 Found {len(acc_ledgers)} acc_ledgers entries")
-                
-                super_code_counts = {}
-                for r in acc_ledgers:
-                    sc = r.get('super_code', 'None')
-                    super_code_counts[sc] = super_code_counts.get(sc, 0) + 1
-                print(f"📈 Ledgers by super_code: {super_code_counts}")
-                
+                if self.gui_callback:
+                    self.gui_callback("acc_ledgers", len(acc_ledgers))
+
                 valid_acc_ledgers = self.validate_acc_ledgers_data(acc_ledgers)
                 if valid_acc_ledgers:
                     self.api_client.upload_acc_ledgers(valid_acc_ledgers)
-                else:
-                    print("❌ No valid acc_ledgers data")
-            else:
-                print("📊 Found 0 acc_ledgers entries")
-        else:
-            print("❌ Failed to fetch acc_ledgers data")
 
         # Sync AccInvmast
         acc_invmast = self.db_connector.fetch_acc_invmast()
         if acc_invmast is not None:
             if acc_invmast:
-                print(f"📊 Found {len(acc_invmast)} acc_invmast entries")
+                if self.gui_callback:
+                    self.gui_callback("acc_invmast", len(acc_invmast))
+
                 valid_acc_invmast = self.validate_acc_invmast_data(acc_invmast)
                 if valid_acc_invmast:
                     self.api_client.upload_acc_invmast(valid_acc_invmast)
-                else:
-                    print("❌ No valid acc_invmast data")
-            else:
-                print("📊 Found 0 acc_invmast entries")
-        else:
-            print("❌ Failed to fetch acc_invmast data")
 
         # Sync CashAndBankAccMaster
         cashandbankaccmaster = self.db_connector.fetch_cashandbankaccmaster()
         if cashandbankaccmaster:
-            print(f"📊 Found {len(cashandbankaccmaster)} cashandbankaccmaster entries")
+            if self.gui_callback:
+                self.gui_callback("cash_bank", len(cashandbankaccmaster))
+
             valid_cashandbankaccmaster = self.validate_cashandbankaccmaster_data(cashandbankaccmaster)
             if valid_cashandbankaccmaster:
                 self.api_client.upload_cashandbankaccmaster(valid_cashandbankaccmaster)
-            else:
-                print("❌ No valid cashandbankaccmaster data")
 
         # Sync acc_tt_servicemaster
         acctt = self.db_connector.fetch_accttservicemaster()
         if acctt:
-            print(f"📊 Found {len(acctt)} acc_tt_servicemaster rows")
+            if self.gui_callback:
+                self.gui_callback("acc_tt_servicemaster", len(acctt))
+
             valid = self.validate_accttservicemaster_data(acctt)
             if valid:
                 self.api_client.upload_accttservicemaster(valid)
-            else:
-                print("❌ No valid acc_tt_servicemaster data")
 
         # Sync Sales Today
         sales_today = self.db_connector.fetch_sales_today()
         if sales_today is not None:
+            if self.gui_callback:
+                self.gui_callback("sales_today", len(sales_today))
+
             if sales_today:
-                print(f"📊 Found {len(sales_today)} sales_today entries")
                 valid_sales_today = self.validate_sales_today_data(sales_today)
                 if valid_sales_today:
                     self.api_client.upload_sales_today(valid_sales_today)
-                else:
-                    print("❌ No valid sales_today data")
-            else:
-                print("📊 Found 0 sales_today entries")
-        else:
-            print("❌ Failed to fetch sales_today data")
 
         # Sync Purchase Today
         purchase_today = self.db_connector.fetch_purchase_today()
         if purchase_today is not None:
+            if self.gui_callback:
+                self.gui_callback("purchase_today", len(purchase_today))
+
             if purchase_today:
-                print(f"📊 Found {len(purchase_today)} purchase_today entries")
                 valid_purchase_today = self.validate_purchase_today_data(purchase_today)
                 if valid_purchase_today:
                     self.api_client.upload_purchase_today(valid_purchase_today)
-                else:
-                    print("❌ No valid purchase_today data")
-            else:
-                print("📊 Found 0 purchase_today entries")
-        else:
-            print("❌ Failed to fetch purchase_today data")
 
         # Sync Sales Daywise
         sales_daywise = self.db_connector.fetch_sales_daywise()
         if sales_daywise is not None:
+            if self.gui_callback:
+                self.gui_callback("sales_daywise", len(sales_daywise))
+
             if sales_daywise:
-                print(f"📊 Found {len(sales_daywise)} sales_daywise entries")
                 valid_sales_daywise = self.validate_sales_daywise_data(sales_daywise)
                 if valid_sales_daywise:
                     self.api_client.upload_sales_daywise(valid_sales_daywise)
-                else:
-                    print("❌ No valid sales_daywise data")
-            else:
-                print("📊 Found 0 sales_daywise entries")
-        else:
-            print("❌ Failed to fetch sales_daywise data")
 
         # Sync Sales Monthwise
         sales_monthwise = self.db_connector.fetch_sales_monthwise()
         if sales_monthwise is not None:
+            if self.gui_callback:
+                self.gui_callback("sales_monthwise", len(sales_monthwise))
+
             if sales_monthwise:
-                print(f"📊 Found {len(sales_monthwise)} sales_monthwise entries")
                 valid_sales_monthwise = self.validate_sales_monthwise_data(sales_monthwise)
                 if valid_sales_monthwise:
                     self.api_client.upload_sales_monthwise(valid_sales_monthwise)
-                else:
-                    print("❌ No valid sales_monthwise data")
-            else:
-                print("📊 Found 0 sales_monthwise entries")
-        else:
-            print("❌ Failed to fetch sales_monthwise data")
 
+        # Sync Sales Return
         salesreturn_report = self.db_connector.fetch_salesreturn_report()
         if salesreturn_report is not None:
+            if self.gui_callback:
+                self.gui_callback("sales_return", len(salesreturn_report))
+
             if salesreturn_report:
-                print(f"📊 Found {len(salesreturn_report)} salesreturn_report entries")
                 valid_salesreturn_report = self.validate_salesreturn_report_data(salesreturn_report)
                 if valid_salesreturn_report:
                     self.api_client.upload_salesreturn_report(valid_salesreturn_report)
+
         # ===============================
         # 🔥 NEW: Sync Type Wise Sales Today
         # ===============================
@@ -1650,19 +1610,20 @@ class SyncTool:
         # ===============================
         try:
             logging.info("🔄 Syncing Type Wise Sales Today...")
-            sync_type_wise_salestoday.run_type_wise_sales_today(self.config)
+            sync_type_wise_salestoday.run_type_wise_sales_today(self.config, self.gui_callback)
             logging.info("✅ Type Wise Sales Today Sync completed")
         except Exception:
             logging.error("❌ Type Wise Sales Today Sync failed")
             logging.error(traceback.format_exc())
 
 
+        
         # ===============================
         # 🔥 ACC SALES TYPES
         # ===============================
         try:
             logging.info("🔄 Syncing ACC SALES TYPES...")
-            sync_acc_sales_types.run_acc_sales_types_sync(self.config)
+            sync_acc_sales_types.run_acc_sales_types_sync(self.config, self.gui_callback)
             logging.info("✅ ACC SALES TYPES Sync completed")
         except Exception:
             logging.error("❌ ACC SALES TYPES Sync failed")
@@ -1674,46 +1635,60 @@ class SyncTool:
         # ===============================
         try:
             logging.info("🔄 Syncing STOCK REPORT...")
-            sync_stock_report.run_stock_report_sync(self.config)
+            sync_stock_report.run_stock_report_sync(self.config, self.gui_callback)
             logging.info("✅ STOCK REPORT Sync completed")
         except Exception:
             logging.error("❌ STOCK REPORT Sync failed")
             logging.error(traceback.format_exc())
 
+
+        # ===============================
+        # 🔥 TENDERCASH
+        # ===============================
         try:
             logging.info("🔄 Syncing TENDERCASH...")
-            sync_tendercash.run_tendercash_sync(self.config)
+            sync_tendercash.run_tendercash_sync(self.config, self.gui_callback)
             logging.info("✅ TENDERCASH Sync completed")
         except Exception:
             logging.error("❌ TENDERCASH Sync failed")
             logging.error(traceback.format_exc())
+
 
         # ===============================
         # 🔥 REFRESH TAG
         # ===============================
         try:
             logging.info("🔄 Syncing REFRESH TAG...")
-            run_refresh_tag_sync(self.config)
+            run_refresh_tag_sync(self.config, self.gui_callback)
             logging.info("✅ REFRESH TAG Sync completed")
         except Exception:
             logging.error("❌ REFRESH TAG Sync failed")
             logging.error(traceback.format_exc())
 
+
+        # ===============================
+        # 🔥 PDC
+        # ===============================
         try:
             logging.info("🔄 Syncing PDC...")
-            run_pdc_sync(self.config)
+            run_pdc_sync(self.config, self.gui_callback)
             logging.info("✅ PDC Sync completed")
         except Exception:
             logging.error("❌ PDC Sync failed")
             logging.error(traceback.format_exc())
 
+
+        # ===============================
+        # 🔥 EVENTLOG
+        # ===============================
         try:
             logging.info("🔄 Syncing EVENTLOG...")
-            run_eventlog_sync(self.config)
+            run_eventlog_sync(self.config, self.gui_callback)
             logging.info("✅ EVENTLOG Sync completed")
         except Exception:
             logging.error("❌ EVENTLOG Sync failed")
             logging.error(traceback.format_exc())
+
 
 
 
@@ -1730,26 +1705,19 @@ class SyncTool:
 
 
 
-    def run_interactive(self):
-        print("=" * 60)
-        print("    SQL Anywhere to Web API Sync Tool")
-        print("=" * 60)
-        print()
-        try:
-            if self.run():
-                print("\n✅ Sync completed successfully!")
-            else:
-                print("\n❌ Sync failed!")
-        except Exception as e:
-            print(f"❌ Critical error: {e}")
-        print("\nPress Enter to exit...")
-        input()
+    
+        
+
+
+
+
 
 
 def main():
     sync_tool = SyncTool()
-    sync_tool.run_interactive()
-    
+    sync_tool.run()
+
 
 if __name__ == "__main__":
     main()
+

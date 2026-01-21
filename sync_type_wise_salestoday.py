@@ -79,11 +79,10 @@ class APIClient:
         logging.info(f"✅ Uploaded {len(data)} ACC sales types")
 
 
-
 # ===============================
-# ENTRY POINT
+# ENTRY POINT (GUI ENABLED)
 # ===============================
-def run_type_wise_sales_today(config):
+def run_type_wise_sales_today(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -92,6 +91,11 @@ def run_type_wise_sales_today(config):
         db.connect()
 
         data = db.fetch_type_wise_sales_today()
+
+        # 🔥 SEND TO GUI
+        if gui_callback:
+            gui_callback("type_wise_sales_today", len(data))
+
         if not data:
             logging.info("ℹ️ No type wise sales found for today")
             return

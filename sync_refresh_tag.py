@@ -13,6 +13,9 @@ import pyodbc
 import requests
 
 
+# ===============================
+# DATABASE
+# ===============================
 class Database:
     def __init__(self, config):
         self.config = config
@@ -55,12 +58,17 @@ class Database:
             for k, v in row.items():
                 if isinstance(v, Decimal):
                     row[k] = float(v)
+                elif hasattr(v, "isoformat"):
+                    row[k] = v.isoformat()
             rows.append(row)
 
         logging.info(f"📦 Fetched {len(rows)} refresh tag rows")
         return rows
 
 
+# ===============================
+# API CLIENT
+# ===============================
 class APIClient:
     ENDPOINT = "/upload-refresh-tag/"
 
@@ -83,7 +91,10 @@ class APIClient:
         logging.info("✅ Refresh tag uploaded successfully")
 
 
-def run_refresh_tag_sync(config):
+# ===============================
+# ENTRY POINT (GUI ENABLED)
+# ===============================
+def run_refresh_tag_sync(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -92,6 +103,11 @@ def run_refresh_tag_sync(config):
         db.connect()
 
         data = db.fetch_refresh_tag()
+
+        # 🔥 GUI CALLBACK
+        if gui_callback:
+            gui_callback("refresh_tag", len(data))
+
         if not data:
             logging.info("ℹ️ No refresh tag data found")
             return

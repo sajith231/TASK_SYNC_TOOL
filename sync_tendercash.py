@@ -55,7 +55,7 @@ class Database:
         for r in cur.fetchall():
             row = dict(zip(cols, r))
 
-            # 🔥 Decimal → float
+            # Decimal → float
             for k, v in row.items():
                 if isinstance(v, Decimal):
                     row[k] = float(v)
@@ -96,9 +96,9 @@ class APIClient:
 
 
 # ===============================
-# ENTRY POINT (CALLED FROM sync.py)
+# ENTRY POINT (GUI ENABLED)
 # ===============================
-def run_tendercash_sync(config):
+def run_tendercash_sync(config, gui_callback=None):
     db = Database(config)
     api = APIClient(config)
 
@@ -107,6 +107,10 @@ def run_tendercash_sync(config):
         db.connect()
 
         data = db.fetch_tendercash()
+
+        # 🔥 SEND COUNT TO GUI
+        if gui_callback:
+            gui_callback("tendercash", len(data))
 
         if not data:
             logging.info("ℹ️ No tendercash data found")
