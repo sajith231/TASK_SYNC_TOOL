@@ -1,6 +1,7 @@
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
+from plyer import notification   # 👈 tray notification
 
 from sync import SyncTool
 
@@ -12,7 +13,7 @@ class TaskPrimeGUI:
         self.root.geometry("800x500")
         self.root.resizable(False, False)
 
-        # Window icon (make sure taskprime.ico exists)
+        # Window icon
         try:
             self.root.iconbitmap("taskprime.ico")
         except Exception:
@@ -26,8 +27,11 @@ class TaskPrimeGUI:
         # 👇 AUTO START SYNC WHEN UI LOADS
         self.root.after(500, self.start_sync)
 
+    # ------------------------------
+    # UI
+    # ------------------------------
+
     def build_ui(self):
-        # Title
         title = tk.Label(
             self.root,
             text="TASK PRIME",
@@ -52,7 +56,6 @@ class TaskPrimeGUI:
         self.tree.heading("table", text="Table Name")
         self.tree.heading("rows", text="Message / Fetched Rows")
 
-        # Column widths
         self.tree.column("table", width=200, anchor="w")
         self.tree.column("rows", width=550, anchor="w")
 
@@ -63,7 +66,7 @@ class TaskPrimeGUI:
         self.tree.configure(xscrollcommand=x_scroll.set)
         x_scroll.pack(side="bottom", fill="x")
 
-        # Status Label
+        # Status
         self.status_label = tk.Label(
             self.root,
             text="Status: Idle",
@@ -90,6 +93,21 @@ class TaskPrimeGUI:
             state="disabled"
         )
         self.stop_btn.grid(row=0, column=1, padx=20)
+
+    # ------------------------------
+    # Tray Notification
+    # ------------------------------
+
+    def show_tray_notification(self, title, message):
+        try:
+            notification.notify(
+                title=title,
+                message=message,
+                app_name="TASK PRIME",
+                timeout=5
+            )
+        except Exception:
+            pass
 
     # ------------------------------
     # Sync Control
@@ -125,8 +143,14 @@ class TaskPrimeGUI:
             success = tool.run()
 
             if success:
-                self.start_countdown()
+                # 🔔 SUCCESS → only tray notification
+                self.show_tray_notification(
+                    "TASK PRIME",
+                    "Sync completed successfully"
+                )
+                self.root.destroy()   # close silently
             else:
+                # ❌ failure stays in UI
                 self.status_label.config(text="Status: Failed", fg="red")
 
         except Exception as e:
@@ -136,25 +160,6 @@ class TaskPrimeGUI:
         self.running = False
         self.start_btn.config(state="normal")
         self.stop_btn.config(state="disabled")
-
-    # ------------------------------
-    # Auto Close Countdown
-    # ------------------------------
-
-    def start_countdown(self, seconds=10):
-        self.countdown_seconds = seconds
-        self.update_countdown()
-
-    def update_countdown(self):
-        if self.countdown_seconds > 0:
-            self.status_label.config(
-                text=f"Status: Completed - Closing in {self.countdown_seconds} seconds...",
-                fg="green"
-            )
-            self.countdown_seconds -= 1
-            self.root.after(1000, self.update_countdown)
-        else:
-            self.root.destroy()
 
     # ------------------------------
     # Update GUI from Sync
