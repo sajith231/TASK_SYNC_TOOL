@@ -17,6 +17,9 @@ class TaskPrimeGUI:
 
         self.build_ui()
 
+        # 👇 AUTO START SYNC WHEN UI LOADS
+        self.root.after(500, self.start_sync)
+
     def build_ui(self):
         title = tk.Label(
             self.root,
@@ -56,7 +59,7 @@ class TaskPrimeGUI:
         )
         self.status_label.pack(pady=10)
 
-        # Buttons
+        # Buttons (kept but not needed)
         btn_frame = ttk.Frame(self.root)
         btn_frame.pack(pady=10)
 
@@ -109,7 +112,7 @@ class TaskPrimeGUI:
             success = tool.run()
 
             if success:
-                self.status_label.config(text="Status: Completed", fg="green")
+                self.start_countdown()
             else:
                 self.status_label.config(text="Status: Failed", fg="red")
 
@@ -120,6 +123,25 @@ class TaskPrimeGUI:
         self.running = False
         self.start_btn.config(state="normal")
         self.stop_btn.config(state="disabled")
+
+    # ------------------------------
+    # Auto Close Countdown
+    # ------------------------------
+
+    def start_countdown(self, seconds=10):
+        self.countdown_seconds = seconds
+        self.update_countdown()
+
+    def update_countdown(self):
+        if self.countdown_seconds > 0:
+            self.status_label.config(
+                text=f"Status: Completed - Closing in {self.countdown_seconds} seconds...",
+                fg="green"
+            )
+            self.countdown_seconds -= 1
+            self.root.after(1000, self.update_countdown)
+        else:
+            self.root.destroy()
 
     # ------------------------------
     # Update GUI from Sync

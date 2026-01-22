@@ -35,39 +35,60 @@ class DatabaseConfig:
         self.config_file = config_file
         self.config = self._load_config()
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self):
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except FileNotFoundError:
-            print(f"❌ Configuration file '{self.config_file}' not found!")
-            sys.exit(1)
-        except json.JSONDecodeError as e:
-            print(f"❌ Invalid JSON in configuration file: {e}")
+        except Exception as e:
+            print(f"Config error: {e}")
             sys.exit(1)
 
+    # 👇 FROM CONFIG FILE
     @property
-    def dsn(self): return self.config["database"]["dsn"]
+    def dsn(self):
+        return self.config.get("dsn")
+
     @property
-    def username(self): return self.config["database"]["username"]
+    def client_id(self):
+        return self.config.get("client_id")
+
+    # 👇 HARDCODED VALUES
     @property
-    def password(self): return self.config["database"]["password"]
+    def username(self):
+        return "DBA"
+
     @property
-    def api_base_url(self): return self.config["api"]["base_url"]
+    def password(self):
+        return "(*$^)"
+
     @property
-    def api_timeout(self): return self.config["api"].get("timeout", 120)
+    def api_base_url(self):
+        return "https://taskwebsyncapi.imcbs.com/api"
+
     @property
-    def client_id(self): return self.config["settings"]["client_id"]
+    def api_timeout(self):
+        return 120
+
     @property
-    def table_name_users(self): return self.config["settings"].get("table_name_users", "acc_users")
+    def table_name_users(self):
+        return "acc_users"
+
     @property
-    def table_name_misel(self): return self.config["settings"].get("table_name_misel", "misel")
+    def table_name_misel(self):
+        return "misel"
+
     @property
-    def batch_size(self): return self.config["settings"].get("batch_size", 1000)
+    def batch_size(self):
+        return 1000
+
     @property
-    def large_table_batch_size(self): return self.config["settings"].get("large_table_batch_size", 500)
+    def large_table_batch_size(self):
+        return 500
+
     @property
-    def log_level(self): return self.config["settings"].get("log_level", "INFO")
+    def log_level(self):
+        return "INFO"
+
 
 
 class DatabaseConnector:
