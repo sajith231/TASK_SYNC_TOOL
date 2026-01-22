@@ -1074,6 +1074,68 @@ class SyncTool:
 
         except Exception as e:
             return False, f"Client validation error: {e}"
+        
+    def validate_full_client(self):
+        try:
+            client_id = self.config.client_id
+
+            # ---------- 1. Check TASK PRIME mapping ----------
+            url1 = "https://activate.imcbs.com/corporate-clientid/list/"
+            res1 = requests.get(url1, timeout=20)
+
+            if res1.status_code != 200:
+                return False, "Corporate validation API failed"
+
+            found_project = False
+            for corp in res1.json().get("data", []):
+                for shop in corp.get("shops", []):
+                    if shop.get("client_id") == client_id:
+                        if "TASK PRIME" in shop.get("projects", []):
+                            found_project = True
+                        else:
+                            return False, "Client not mapped to TASK PRIME project"
+
+            if not found_project:
+                return False, "Client not found in TASK PRIME mapping"
+
+            # ---------- 2. Get master client details ----------
+            url2 = "https://activate.imcbs.com/client-id-list/get-client-ids/"
+            res2 = requests.get(url2, timeout=20)
+
+            if res2.status_code != 200:
+                return False, "Client master API failed"
+
+            client_master = None
+            for c in res2.json().get("data", []):
+                if c.get("client_id") == client_id:
+                    client_master = c
+                    break
+
+            if not client_master:
+                return False, "Client ID not found in master list"
+
+            api_company = client_master.get("company_name", "").strip().upper()
+            api_place = client_master.get("place", "").strip().upper()
+
+            # ---------- 3. Compare with MISEL ----------
+            misel = self.db_connector.fetch_misel()
+            if not misel:
+                return False, "MISEL table empty"
+
+            db_firm = misel[0].get("firm_name", "").strip().upper()
+            db_address = misel[0].get("address1", "").strip().upper()
+
+            if api_company != db_firm:
+                return False, f"Firm name mismatch: API({api_company}) != DB({db_firm})"
+
+            if api_place not in db_address:
+                return False, f"Address mismatch: API({api_place}) not in DB({db_address})"
+
+            return True, "Full client validation successful"
+
+        except Exception as e:
+            return False, f"Validation error: {e}"
+
 
 
 
@@ -1518,16 +1580,20 @@ class SyncTool:
         if not self.initialize():
             return False
 
-        # 🔒 CLIENT VALIDATION FIRST
-        is_valid, message = self.validate_client_project()
+        # Connect DB early (needed for MISEL)
+        if not self.db_connector.connect():
+            return False
+
+        # 🔐 FULL CLIENT VALIDATION
+        is_valid, message = self.validate_full_client()
 
         if not is_valid:
             print("⛔", message)
-            
-            # Send error to GUI
+
             if self.gui_callback:
                 self.gui_callback("ERROR", message)
 
+            self.db_connector.close()
             return False
 
 

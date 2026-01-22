@@ -9,7 +9,7 @@ class TaskPrimeGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("TASK PRIME")
-        self.root.geometry("700x500")
+        self.root.geometry("800x500")   # wider window
         self.root.resizable(False, False)
 
         self.sync_thread = None
@@ -35,7 +35,7 @@ class TaskPrimeGUI:
         )
         subtitle.pack()
 
-        # Table
+        # Table Frame
         frame = ttk.Frame(self.root)
         frame.pack(padx=20, pady=20, fill="both", expand=True)
 
@@ -43,12 +43,18 @@ class TaskPrimeGUI:
         self.tree = ttk.Treeview(frame, columns=columns, show="headings", height=12)
 
         self.tree.heading("table", text="Table Name")
-        self.tree.heading("rows", text="Fetched Rows")
+        self.tree.heading("rows", text="Message / Fetched Rows")
 
-        self.tree.column("table", width=400)
-        self.tree.column("rows", width=200, anchor="center")
+        # Wider second column
+        self.tree.column("table", width=200, anchor="w")
+        self.tree.column("rows", width=550, anchor="w")
 
         self.tree.pack(fill="both", expand=True)
+
+        # Horizontal Scrollbar (for long errors)
+        x_scroll = ttk.Scrollbar(frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(xscrollcommand=x_scroll.set)
+        x_scroll.pack(side="bottom", fill="x")
 
         # Status
         self.status_label = tk.Label(
@@ -59,7 +65,7 @@ class TaskPrimeGUI:
         )
         self.status_label.pack(pady=10)
 
-        # Buttons (kept but not needed)
+        # Buttons
         btn_frame = ttk.Frame(self.root)
         btn_frame.pack(pady=10)
 
@@ -148,8 +154,21 @@ class TaskPrimeGUI:
     # ------------------------------
 
     def update_table(self, table_name, row_count):
-        self.tree.insert("", "end", values=(table_name, row_count))
-        self.root.update_idletasks()
+        if table_name == "ERROR":
+            # Clear table
+            self.tree.delete(*self.tree.get_children())
+
+            # Insert full error message
+            self.tree.insert("", "end", values=("ERROR", row_count))
+
+            # Update status
+            self.status_label.config(
+                text=f"Status: {row_count}",
+                fg="red"
+            )
+        else:
+            self.tree.insert("", "end", values=(table_name, row_count))
+            self.root.update_idletasks()
 
     def run(self):
         self.root.mainloop()
