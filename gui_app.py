@@ -9,8 +9,14 @@ class TaskPrimeGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("TASK PRIME")
-        self.root.geometry("800x500")   # wider window
+        self.root.geometry("800x500")
         self.root.resizable(False, False)
+
+        # Window icon (make sure taskprime.ico exists)
+        try:
+            self.root.iconbitmap("taskprime.ico")
+        except Exception:
+            pass
 
         self.sync_thread = None
         self.running = False
@@ -21,6 +27,7 @@ class TaskPrimeGUI:
         self.root.after(500, self.start_sync)
 
     def build_ui(self):
+        # Title
         title = tk.Label(
             self.root,
             text="TASK PRIME",
@@ -45,18 +52,18 @@ class TaskPrimeGUI:
         self.tree.heading("table", text="Table Name")
         self.tree.heading("rows", text="Message / Fetched Rows")
 
-        # Wider second column
+        # Column widths
         self.tree.column("table", width=200, anchor="w")
         self.tree.column("rows", width=550, anchor="w")
 
         self.tree.pack(fill="both", expand=True)
 
-        # Horizontal Scrollbar (for long errors)
+        # Horizontal Scrollbar
         x_scroll = ttk.Scrollbar(frame, orient="horizontal", command=self.tree.xview)
         self.tree.configure(xscrollcommand=x_scroll.set)
         x_scroll.pack(side="bottom", fill="x")
 
-        # Status
+        # Status Label
         self.status_label = tk.Label(
             self.root,
             text="Status: Idle",
@@ -99,6 +106,7 @@ class TaskPrimeGUI:
         self.stop_btn.config(state="normal")
 
         self.sync_thread = threading.Thread(target=self.run_sync)
+        self.sync_thread.daemon = True
         self.sync_thread.start()
 
     def stop_sync(self):
@@ -114,7 +122,6 @@ class TaskPrimeGUI:
     def run_sync(self):
         try:
             tool = SyncTool(gui_callback=self.update_table)
-
             success = tool.run()
 
             if success:
@@ -153,21 +160,13 @@ class TaskPrimeGUI:
     # Update GUI from Sync
     # ------------------------------
 
-    def update_table(self, table_name, row_count):
+    def update_table(self, table_name, message):
         if table_name == "ERROR":
-            # Clear table
             self.tree.delete(*self.tree.get_children())
-
-            # Insert full error message
-            self.tree.insert("", "end", values=("ERROR", row_count))
-
-            # Update status
-            self.status_label.config(
-                text=f"Status: {row_count}",
-                fg="red"
-            )
+            self.tree.insert("", "end", values=("ERROR", message))
+            self.status_label.config(text=f"Status: {message}", fg="red")
         else:
-            self.tree.insert("", "end", values=(table_name, row_count))
+            self.tree.insert("", "end", values=(table_name, message))
             self.root.update_idletasks()
 
     def run(self):
