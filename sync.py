@@ -1049,6 +1049,33 @@ class SyncTool:
             logging.error(f"Initialization failed: {e}")
             logging.error(traceback.format_exc())
             return False
+        
+    def validate_client_project(self):
+        try:
+            url = "https://activate.imcbs.com/corporate-clientid/list/"
+            res = requests.get(url, timeout=20)
+
+            if res.status_code != 200:
+                return False, "Cannot validate client. Server error."
+
+            data = res.json().get("data", [])
+            my_client_id = self.config.client_id
+
+            for corp in data:
+                for shop in corp.get("shops", []):
+                    if shop.get("client_id") == my_client_id:
+                        projects = shop.get("projects", [])
+                        if "TASK PRIME" in projects:
+                            return True, "Client validated"
+                        else:
+                            return False, "This client is not allowed for TASK PRIME project"
+
+            return False, "Invalid client_id. Not found in system."
+
+        except Exception as e:
+            return False, f"Client validation error: {e}"
+
+
 
     def validate_accttservicemaster_data(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         valid = []
@@ -1487,10 +1514,23 @@ class SyncTool:
 
     def run(self) -> bool:
         print("🔄 Starting SQL Anywhere to Web API sync...")
+        
         if not self.initialize():
             return False
-        if not self.db_connector.connect():
+
+        # 🔒 CLIENT VALIDATION FIRST
+        is_valid, message = self.validate_client_project()
+
+        if not is_valid:
+            print("⛔", message)
+            
+            # Send error to GUI
+            if self.gui_callback:
+                self.gui_callback("ERROR", message)
+
             return False
+
+
 
         # Sync Users
         # Sync Users

@@ -30,7 +30,7 @@ class TaskPrimeGUI:
 
         subtitle = tk.Label(
             self.root,
-            text="SQL Anywhere Synchronization Tool",
+            text="SYNC Tool",
             font=("Segoe UI", 11)
         )
         subtitle.pack()
